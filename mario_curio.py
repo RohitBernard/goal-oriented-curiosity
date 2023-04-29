@@ -21,7 +21,7 @@ from collections import deque
 
 from tensorboardX import SummaryWriter
 import gym_super_mario_bros
-from nes_py.wrappers import BinarySpaceToDiscreteSpaceEnv
+from nes_py.wrappers import JoypadSpace
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT
 
 
@@ -37,7 +37,7 @@ class MarioEnvironment(Process):
             w=84):
         super(MarioEnvironment, self).__init__()
         self.daemon = True
-        self.env = BinarySpaceToDiscreteSpaceEnv(
+        self.env = JoypadSpace(
             gym_super_mario_bros.make(env_id), movement)
 
         self.is_render = is_render
@@ -63,6 +63,8 @@ class MarioEnvironment(Process):
                 self.env.render()
             obs, reward, done, info = self.env.step(action)
 
+            img = cv2.cvtColor(obs, cv2.COLOR_BGR2RGB)
+            self.video.write(img)
             if life_done:
                 # when Mario loses life, changes the state to the terminal
                 # state.
@@ -113,6 +115,7 @@ class MarioEnvironment(Process):
         self.stage = 1
         self.max_pos = 0
         self.get_init_state(self.env.reset())
+        self.video = cv2.VideoWriter("videos/output"+str(int(time.time()))+'.avi', 0, 30, (256,240))
         return self.history[:, :, :]
 
     def pre_proc(self, X):
@@ -357,13 +360,13 @@ class RewardForwardFilter(object):
 
 
 if __name__ == '__main__':
-    env_id = 'SuperMarioBros-v0'
+    env_id = 'SuperMarioBros-1-1-v2'
     movement = COMPLEX_MOVEMENT
-    env = BinarySpaceToDiscreteSpaceEnv(
+    env = JoypadSpace(
         gym_super_mario_bros.make(env_id), movement)
     input_size = env.observation_space.shape  # 4
     output_size = env.action_space.n  # 2
-
+    print(input_size, output_size)
     env.close()
 
     writer = SummaryWriter()
@@ -374,17 +377,17 @@ if __name__ == '__main__':
     is_load_model = False
     is_training = True
 
-    is_render = False
+    is_render = True #False
     use_standardization = True
     use_noisy_net = False
 
     model_path = 'models/{}_{}.model'.format(env_id,
                                              datetime.date.today().isoformat())
-    load_model_path = 'models/SuperMarioBros-v0_2018-09-26.model'
+    load_model_path = 'models/SuperMarioBros-v2_2023-03-30.model'
 
     lam = 0.95
-    num_worker = 16
-    num_step = 128
+    num_worker = 2
+    num_step = 1 #128
     ppo_eps = 0.1
     epoch = 3
     batch_size = 256
@@ -400,10 +403,10 @@ if __name__ == '__main__':
     clip_grad_norm = 0.5
 
     # Curiosity param
-    icm_scale = 10.0
+    icm_scale = 10.0 #10.0
     beta = 0.2
     eta = 1.0
-    reward_scale = 1
+    reward_scale = 1 #1
 
     agent = ActorAgent(
         input_size,
@@ -516,7 +519,7 @@ if __name__ == '__main__':
 
             value, next_value, policy = agent.forward_transition(
                 total_state, total_next_state)
-
+            print(value)
             # running mean int reward
             total_reward_per_env = np.array([discounted_reward.update(
                 reward_per_step) for reward_per_step in total_reward.reshape([num_worker, -1]).T])

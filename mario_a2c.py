@@ -21,7 +21,7 @@ from collections import deque
 
 from tensorboardX import SummaryWriter
 import gym_super_mario_bros
-from nes_py.wrappers import BinarySpaceToDiscreteSpaceEnv
+from nes_py.wrappers import JoypadSpace
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 
 
@@ -37,7 +37,7 @@ class MarioEnvironment(Process):
             w=84):
         super(MarioEnvironment, self).__init__()
         self.daemon = True
-        self.env = BinarySpaceToDiscreteSpaceEnv(
+        self.env = JoypadSpace(
             gym_super_mario_bros.make(env_id), SIMPLE_MOVEMENT)
 
         self.is_render = is_render
@@ -61,6 +61,8 @@ class MarioEnvironment(Process):
             action = self.child_conn.recv()
             if self.is_render:
                 self.env.render()
+            # print(self.env.action_space)
+            # print(action)
             obs, reward, done, info = self.env.step(action)
 
             if life_done:
@@ -309,8 +311,8 @@ def make_train_data(reward, done, value, next_value):
 
 
 if __name__ == '__main__':
-    env_id = 'SuperMarioBros-v0'
-    env = BinarySpaceToDiscreteSpaceEnv(
+    env_id = 'SuperMarioBros-v2'
+    env = JoypadSpace(
         gym_super_mario_bros.make(env_id), SIMPLE_MOVEMENT)
     input_size = env.observation_space.shape  # 4
     output_size = env.action_space.n  # 2
@@ -318,24 +320,24 @@ if __name__ == '__main__':
     env.close()
 
     writer = SummaryWriter()
-    use_cuda = False
+    use_cuda = True
     use_gae = True
     life_done = True
 
-    is_load_model = False
-    is_training = True
+    is_load_model = True #False
+    is_training = False #True
 
-    is_render = True
+    is_render = True #False
     use_standardization = True
     use_noisy_net = True
     use_icm = True
 
     model_path = 'models/{}_{}.model'.format(env_id,
                                              datetime.date.today().isoformat())
-    load_model_path = 'models/SuperMarioBros-v2_2018-09-18.model'
+    load_model_path = 'models/SuperMarioBros-v2_2018-09-17.model'
 
     lam = 0.95
-    num_worker = 16
+    num_worker = 1
     num_step = 5
     max_step = 1.15e8
 
@@ -407,6 +409,7 @@ if __name__ == '__main__':
             actions = agent.get_action(states)
 
             for parent_conn, action in zip(parent_conns, actions):
+                # print(works[0].env.step(action))
                 parent_conn.send(action)
 
             next_states, rewards, dones, real_dones, log_rewards = [], [], [], [], []

@@ -21,7 +21,7 @@ from collections import deque
 
 from tensorboardX import SummaryWriter
 import gym_super_mario_bros
-from nes_py.wrappers import BinarySpaceToDiscreteSpaceEnv
+from nes_py.wrappers import JoypadSpace
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT
 
 
@@ -37,7 +37,7 @@ class MarioEnvironment(Process):
             w=84):
         super(MarioEnvironment, self).__init__()
         self.daemon = True
-        self.env = BinarySpaceToDiscreteSpaceEnv(
+        self.env = JoypadSpace(
             gym_super_mario_bros.make(env_id), movement)
 
         self.is_render = is_render
@@ -304,7 +304,7 @@ class RunningMeanStd(object):
 if __name__ == '__main__':
     env_id = 'SuperMarioBros-v0'
     movement = COMPLEX_MOVEMENT
-    env = BinarySpaceToDiscreteSpaceEnv(
+    env = JoypadSpace(
         gym_super_mario_bros.make(env_id), movement)
     input_size = env.observation_space.shape  # 4
     output_size = env.action_space.n  # 2
@@ -312,14 +312,14 @@ if __name__ == '__main__':
     env.close()
 
     writer = SummaryWriter()
-    use_cuda = True
+    use_cuda = False #True
     use_gae = True
     life_done = True
 
-    is_load_model = False
-    is_training = True
+    is_load_model = True #False
+    is_training = False #True
 
-    is_render = False
+    is_render = True #False
     use_standardization = True
     use_noisy_net = True
 
