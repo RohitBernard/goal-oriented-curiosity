@@ -215,6 +215,59 @@ class CnnActorCriticNetwork(nn.Module):
         value = self.critic(x)
         return policy, value
 
+class GoalOrientedCnnActorCriticNetwork(nn.Module):
+    def __init__(self, input_size, output_size, goal_size, use_noisy_net=False):
+        super(GoalOrientedCnnActorCriticNetwork, self).__init__()
+
+        if use_noisy_net:
+            print('use NoisyNet')
+            linear = NoisyLinear
+        else:
+            linear = nn.Linear
+
+        self.feature = nn.Sequential(
+            nn.Conv2d(
+                in_channels=4,
+                out_channels=32,
+                kernel_size=8,
+                stride=4),
+            nn.LeakyReLU(),
+            nn.Conv2d(
+                in_channels=32,
+                out_channels=64,
+                kernel_size=4,
+                stride=2),
+            nn.LeakyReLU(),
+            nn.Conv2d(
+                in_channels=64,
+                out_channels=64,
+                kernel_size=3,
+                stride=1),
+            nn.LeakyReLU(),
+            Flatten(),
+            linear(
+                7 * 7 * 64,
+                512),
+            nn.LeakyReLU(),
+        )
+        self.actor = linear(512 + goal_size, output_size)
+        self.critic = linear(512 + goal_size, 1)
+
+        for p in self.modules():
+            if isinstance(p, nn.Conv2d):
+                init.kaiming_uniform_(p.weight)
+                p.bias.data.zero_()
+
+            if isinstance(p, nn.Linear):
+                init.kaiming_uniform_(p.weight, a=1.0)
+                p.bias.data.zero_()
+
+    def forward(self, state, goal):
+        x = self.feature(state)
+        x = torch.cat((x, goal), -1)
+        policy = self.actor(x)
+        value = self.critic(x)
+        return policy, value
 
 class CuriosityModel(nn.Module):
     def __init__(self, input_size, output_size):
