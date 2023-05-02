@@ -391,7 +391,7 @@ if __name__ == '__main__':
     is_load_model = False
     is_training = True
 
-    is_render = True #False
+    is_render = False
     use_standardization = True
     use_noisy_net = False
 
